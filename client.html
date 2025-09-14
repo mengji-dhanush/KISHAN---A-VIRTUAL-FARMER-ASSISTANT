@@ -1,35 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
+    <meta charset="UTF-8" />
     <title>Farmer AI Chatbot</title>
     <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f4f8f3;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+      }
+
+      .chat-container {
+        width: 80%;
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        height: 80%;
+      }
+
+      .chat-header {
+        background: #4caf50;
+        color: white;
+        padding: 12px;
+        text-align: center;
+        font-size: 18px;
+        font-weight: bold;
+      }
+
+      .role-select {
+        padding: 10px;
+        text-align: center;
+        border-bottom: 1px solid #eee;
+      }
+
+      .role-select select,
+      .role-select button {
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        margin: 4px;
+        cursor: pointer;
+      }
+
+      .role-select button {
+        background: #4caf50;
+        color: white;
+        border: none;
+      }
+
+      #chat {
+        flex: 1;
+        padding: 12px;
+        overflow: auto;
+        background: #fafafa;
+      }
+
+      #chat p {
+        margin: 6px 0;
+        padding: 8px 10px;
+        border-radius: 8px;
+        max-width: 80%;
+        word-wrap: break-word;
+      }
+
+      #chat p b {
+        display: block;
+        margin-bottom: 2px;
+        font-size: 12px;
+        color: #555;
+      }
+
+      /* Message styles */
+      .msg-user {
+        background: #d4f8d4;
+        align-self: flex-end;
+      }
+      .msg-other {
+        background: #f1f1f1;
+        align-self: flex-start;
+      }
+
+      .chat-input {
+        display: flex;
+        padding: 10px;
+        border-top: 1px solid #eee;
+        background: #fff;
+      }
+
+      .chat-input input {
+        flex: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+      }
+
+      .chat-input button {
+        margin-left: 8px;
+        padding: 8px 12px;
+        border: none;
+        border-radius: 6px;
+        background: #4caf50;
+        color: white;
+        cursor: pointer;
+      }
+
+      .upload-section {
+        padding: 10px;
+        text-align: center;
+        border-top: 1px solid #eee;
+        background: #fafafa;
+      }
+
+      .upload-section input {
+        margin-bottom: 6px;
+      }
+    </style>
   </head>
   <body>
-    <h2>🌱 Farmer AI Chat</h2>
+    <div class="chat-container">
+      <div class="chat-header">🌱 Farmer AI Chat</div>
 
-    <select id="roleSelect">
-      <option value="farmer">Farmer</option>
-      <option value="expert">Expert</option>
-    </select>
-    <button onclick="registerRole()">Join</button>
+      <div class="role-select">
+        <select id="roleSelect">
+          <option value="farmer">Farmer</option>
+          <option value="expert">Expert</option>
+        </select>
+        <button onclick="registerRole()">Join</button>
+      </div>
 
-    <div
-      id="chat"
-      style="
-        border: 1px solid #ccc;
-        padding: 10px;
-        height: 300px;
-        overflow-y: scroll;
-        margin-top: 10px;
-      "
-    ></div>
+      <div id="chat"></div>
 
-    <input id="msgBox" placeholder="Type your message..." />
-    <button onclick="sendMessage()">Send</button>
-    <br /><br />
+      <div class="chat-input">
+        <input id="msgBox" placeholder="Type your message..." />
+        <button onclick="sendMessage()">Send</button>
+      </div>
 
-    <input type="file" id="imageInput" />
-    <button onclick="uploadImage()">Upload Image</button>
+      <div class="upload-section">
+        <input type="file" id="imageInput" />
+        <br />
+        <button onclick="uploadImage()">Upload Image</button>
+      </div>
+    </div>
 
     <script>
       const socket = io("http://localhost:5000");
@@ -44,13 +163,13 @@
 
       socket.on("receiveMessage", (data) => {
         const chat = document.getElementById("chat");
-        chat.innerHTML += `<p><b>${data.sender}:</b> ${data.text}</p>`;
+        chat.innerHTML += `<p class="msg-other"><b>${data.sender}:</b>${data.text}</p>`;
         chat.scrollTop = chat.scrollHeight;
       });
 
       socket.on("expertMessage", (data) => {
         const chat = document.getElementById("chat");
-        chat.innerHTML += `<p><b>Farmer:</b> ${data.text}</p>`;
+        chat.innerHTML += `<p class="msg-other"><b>Farmer:</b>${data.text}</p>`;
         chat.scrollTop = chat.scrollHeight;
         currentFarmerId = data.farmerId;
       });
@@ -58,7 +177,7 @@
       socket.on("expertImage", (data) => {
         if (role === "expert") {
           const chat = document.getElementById("chat");
-          chat.innerHTML += `<p><b>Farmer (image):</b> <img src="${data.imageUrl}" width="150"/></p>`;
+          chat.innerHTML += `<p class="msg-other"><b>Farmer (image):</b><br><img src="${data.imageUrl}" width="150"/></p>`;
           chat.scrollTop = chat.scrollHeight;
         }
       });
@@ -75,7 +194,7 @@
 
         document.getElementById(
           "chat"
-        ).innerHTML += `<p><b>You:</b> ${msg}</p>`;
+        ).innerHTML += `<p class="msg-user"><b>You:</b>${msg}</p>`;
         document.getElementById("msgBox").value = "";
         document.getElementById("chat").scrollTop =
           document.getElementById("chat").scrollHeight;
@@ -87,7 +206,7 @@
 
         const formData = new FormData();
         formData.append("image", fileInput.files[0]);
-        formData.append("farmerId", socket.id); // important
+        formData.append("farmerId", socket.id);
 
         const res = await fetch("http://localhost:5000/upload", {
           method: "POST",
@@ -96,8 +215,8 @@
 
         const data = await res.json();
         const chat = document.getElementById("chat");
-        chat.innerHTML += `<p><b>You:</b> <img src="${data.imageUrl}" width="150"/></p>`;
-        chat.innerHTML += `<p><b>AI:</b> ${data.reply}</p>`;
+        chat.innerHTML += `<p class="msg-user"><b>You:</b><br><img src="${data.imageUrl}" width="150"/></p>`;
+        chat.innerHTML += `<p class="msg-other"><b>AI:</b>${data.reply}</p>`;
         chat.scrollTop = chat.scrollHeight;
       }
     </script>
