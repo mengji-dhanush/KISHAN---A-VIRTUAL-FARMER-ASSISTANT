@@ -7,3 +7,4 @@ predict.py
 train_cnn.py
 kaggle.json
 *.pkl
+plant_disease_cnn.h5

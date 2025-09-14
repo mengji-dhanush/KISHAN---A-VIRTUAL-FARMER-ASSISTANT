@@ -1,39 +1,63 @@
 # predict_server.py
 from flask import Flask, request, jsonify
-import joblib
 import numpy as np
-from skimage.io import imread
-from skimage.transform import resize
-from skimage.color import gray2rgb
+from tensorflow.keras.models import load_model
+from tensorflow.keras.preprocessing import image
+import io
 
-# Load model and classes
-model = joblib.load("disease_classifier.pkl")
-classes = joblib.load("classes.pkl")
+# Load CNN model
+model = load_model("plant_disease_cnn.h5")
+
+# Your 15 classes (same order as dataset)
+classes = [
+    "Pepper__bell___Bacterial_spot",
+    "Pepper__bell___healthy",
+    "Potato___Early_blight",
+    "Potato___Late_blight",
+    "Potato___healthy",
+    "Tomato_Bacterial_spot",
+    "Tomato_Early_blight",
+    "Tomato_Late_blight",
+    "Tomato_Leaf_Mold",
+    "Tomato_Septoria_leaf_spot",
+    "Tomato_Spider_mites_Two_spotted_spider_mite",
+    "Tomato_Target_Spot",
+    "Tomato__Tomato_YellowLeaf__Curl_Virus",
+    "Tomato__Tomato_mosaic_virus",
+    "Tomato_healthy"
+]
 
 app = Flask(__name__)
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if "image" not in request.files:
-        return jsonify({"error": "No image uploaded"}), 400
+    try:
+        if "image" not in request.files:
+            return jsonify({"error": "No image uploaded"}), 400
 
-    file = request.files["image"]
-    img = imread(file)
+        file = request.files["image"]
 
-    # Preprocess
-    if img.ndim == 2:
-        img = gray2rgb(img)
-    elif img.shape[2] == 4:
-        img = img[:, :, :3]
+        # Convert FileStorage → BytesIO
+        img_bytes = file.read()
+        img = image.load_img(io.BytesIO(img_bytes), target_size=(64, 64))
 
-    img_resized = resize(img, (64, 64), anti_aliasing=True)
-    img_flat = img_resized.flatten().reshape(1, -1)
+        # Preprocess
+        img_array = image.img_to_array(img)
+        img_array = np.expand_dims(img_array, axis=0) / 255.0
 
-    # Predict
-    pred_idx = model.predict(img_flat)[0]
-    pred_class = classes[pred_idx]
+        # Predict
+        predictions = model.predict(img_array)
+        pred_idx = np.argmax(predictions, axis=1)[0]
+        pred_class = classes[pred_idx]
+        confidence = float(np.max(predictions))
 
-    return jsonify({"prediction": pred_class})
+        return jsonify({
+            "prediction": pred_class,
+            "confidence": confidence
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
