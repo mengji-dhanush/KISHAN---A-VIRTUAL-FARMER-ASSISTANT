@@ -1,0 +1,9 @@
+node_modules
+.env
+PlantVillage
+PlantVillage_split
+uploads
+predict.py
+train_cnn.py
+kaggle.json
+*.pkl

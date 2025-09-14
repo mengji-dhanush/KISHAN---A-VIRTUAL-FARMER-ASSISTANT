@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Farmer AI Chatbot</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+  </head>
+  <body>
+    <h2>🌱 Farmer AI Chat</h2>
+
+    <select id="roleSelect">
+      <option value="farmer">Farmer</option>
+      <option value="expert">Expert</option>
+    </select>
+    <button onclick="registerRole()">Join</button>
+
+    <div
+      id="chat"
+      style="
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 300px;
+        overflow-y: scroll;
+        margin-top: 10px;
+      "
+    ></div>
+
+    <input id="msgBox" placeholder="Type your message..." />
+    <button onclick="sendMessage()">Send</button>
+    <br /><br />
+
+    <input type="file" id="imageInput" />
+    <button onclick="uploadImage()">Upload Image</button>
+
+    <script>
+      const socket = io("http://localhost:5000");
+      let role = null;
+      let currentFarmerId = null;
+
+      function registerRole() {
+        role = document.getElementById("roleSelect").value;
+        socket.emit("register", role);
+        alert(`Registered as ${role}`);
+      }
+
+      socket.on("receiveMessage", (data) => {
+        const chat = document.getElementById("chat");
+        chat.innerHTML += `<p><b>${data.sender}:</b> ${data.text}</p>`;
+        chat.scrollTop = chat.scrollHeight;
+      });
+
+      socket.on("expertMessage", (data) => {
+        const chat = document.getElementById("chat");
+        chat.innerHTML += `<p><b>Farmer:</b> ${data.text}</p>`;
+        chat.scrollTop = chat.scrollHeight;
+        currentFarmerId = data.farmerId;
+      });
+
+      socket.on("expertImage", (data) => {
+        if (role === "expert") {
+          const chat = document.getElementById("chat");
+          chat.innerHTML += `<p><b>Farmer (image):</b> <img src="${data.imageUrl}" width="150"/></p>`;
+          chat.scrollTop = chat.scrollHeight;
+        }
+      });
+
+      function sendMessage() {
+        const msg = document.getElementById("msgBox").value;
+        if (!msg.trim()) return;
+
+        if (role === "expert" && currentFarmerId) {
+          socket.emit("expertReply", { farmerId: currentFarmerId, text: msg });
+        } else {
+          socket.emit("sendMessage", msg);
+        }
+
+        document.getElementById(
+          "chat"
+        ).innerHTML += `<p><b>You:</b> ${msg}</p>`;
+        document.getElementById("msgBox").value = "";
+        document.getElementById("chat").scrollTop =
+          document.getElementById("chat").scrollHeight;
+      }
+
+      async function uploadImage() {
+        const fileInput = document.getElementById("imageInput");
+        if (!fileInput.files.length) return alert("Please select an image!");
+
+        const formData = new FormData();
+        formData.append("image", fileInput.files[0]);
+        formData.append("farmerId", socket.id); // important
+
+        const res = await fetch("http://localhost:5000/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        const data = await res.json();
+        const chat = document.getElementById("chat");
+        chat.innerHTML += `<p><b>You:</b> <img src="${data.imageUrl}" width="150"/></p>`;
+        chat.innerHTML += `<p><b>AI:</b> ${data.reply}</p>`;
+        chat.scrollTop = chat.scrollHeight;
+      }
+    </script>
+  </body>
+</html>
