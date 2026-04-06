@@ -462,18 +462,13 @@
   <body>
     <header>
       <img src="assets/farmer-logo.jpg" alt="KISHAN Logo" />
+      <button id="authActionBtn" class="login-btn" onclick="window.location.href='expert-auth.html'">Expert Login</button>
     </header>
 
     <div class="chat-container">
       <div class="chat-header">KISHAN - A Virtual Farmer Assistant</div>
 
-      <div class="role-select">
-        <select id="roleSelect">
-          <option value="farmer">Farmer</option>
-          <option value="expert">Expert</option>
-        </select>
-        <button onclick="registerRole()">Join</button>
-      </div>
+      <!-- Auto role assignment via script below -->
 
       <div id="chat"></div>
 
@@ -558,15 +553,29 @@
 
       function addMessage(content, type = "other") {
         const chat = document.getElementById("chat");
-        chat.innerHTML += `${content}`;
+        chat.innerHTML += `<p class="msg-${type}">${content}</p>`;
         chat.scrollTop = chat.scrollHeight;
       }
 
-      function registerRole() {
-        role = document.getElementById("roleSelect").value;
-        socket.emit("register", role);
-        addMessage(`<b>System:</b> You joined as <u>${role}</u>`, "other");
+      function logoutExpert() {
+        localStorage.removeItem('expertData');
+        window.location.reload();
       }
+
+      socket.on('connect', () => {
+        const expertData = JSON.parse(localStorage.getItem('expertData'));
+        if (expertData) {
+          role = 'expert';
+          socket.emit("register", role);
+          addMessage(`<b>System:</b> Welcome Expert ${expertData.fullName}`, "other");
+          document.getElementById('authActionBtn').textContent = 'Logout';
+          document.getElementById('authActionBtn').onclick = logoutExpert;
+        } else {
+          role = 'farmer';
+          socket.emit("register", role);
+          addMessage(`<b>System:</b> You joined as <u>Farmer</u>`, "other");
+        }
+      });
 
       socket.on("receiveMessage", (data) => {
         addMessage(`<b>${data.sender}:</b> ${data.text}`, "other");

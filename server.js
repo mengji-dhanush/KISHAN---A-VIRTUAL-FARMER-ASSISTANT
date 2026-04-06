@@ -18,8 +18,9 @@ if (!process.env.GROQ_API_KEY) {
 // ---------- AI SETUP (GROQ) ----------
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// Ensure uploads folder exists
+// Ensure uploads folders exist
 if (!fs.existsSync("uploads")) fs.mkdirSync("uploads");
+if (!fs.existsSync("uploads/documents")) fs.mkdirSync("uploads/documents");
 
 // ---------------- APP + SOCKET SETUP ----------------
 const app = express();
@@ -37,6 +38,15 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
+
+const docStorage = multer.diskStorage({
+  destination: "uploads/documents/",
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + "-doc" + path.extname(file.originalname));
+  },
+});
+const docUpload = multer({ storage: docStorage });
+
 app.use("/uploads", express.static("uploads"));
 
 // ---------------- SOCKET.IO EVENTS ----------------
@@ -159,6 +169,63 @@ app.post("/upload", upload.single("image"), async (req, res) => {
       error: "Failed to get prediction or AI advice.",
     });
   }
+});
+
+// ---------------- EXPERT AUTH ROUTES ----------------
+const EXPERTS_FILE = "experts.json";
+
+app.post("/api/expert/signup", docUpload.single("document"), (req, res) => {
+  const { fullName, email, password } = req.body;
+  if (!fullName || !email || !password || !req.file) {
+    return res.status(400).json({ error: "All fields including document are required." });
+  }
+
+  let experts = [];
+  try {
+    if (fs.existsSync(EXPERTS_FILE)) {
+      experts = JSON.parse(fs.readFileSync(EXPERTS_FILE));
+    }
+  } catch (err) {
+    console.error("Error reading experts file:", err);
+  }
+
+  if (experts.some(e => e.email === email)) {
+    return res.status(400).json({ error: "Expert with this email already exists." });
+  }
+
+  const newExpert = {
+    id: Date.now().toString(),
+    fullName,
+    email,
+    password, // Storing as plaintext for local demo purposes
+    documentPath: req.file.path,
+    status: "active" // Could be 'pending' for manual verification
+  };
+
+  experts.push(newExpert);
+  fs.writeFileSync(EXPERTS_FILE, JSON.stringify(experts, null, 2));
+
+  res.json({ message: "Signup successful", expert: { id: newExpert.id, fullName, email } });
+});
+
+app.post("/api/expert/login", (req, res) => {
+  const { email, password } = req.body;
+
+  let experts = [];
+  try {
+    if (fs.existsSync(EXPERTS_FILE)) {
+      experts = JSON.parse(fs.readFileSync(EXPERTS_FILE));
+    }
+  } catch (err) {
+    console.error("Error reading experts file:", err);
+  }
+
+  const expert = experts.find(e => e.email === email && e.password === password);
+  if (!expert) {
+    return res.status(401).json({ error: "Invalid email or password." });
+  }
+
+  res.json({ message: "Login successful", expert: { id: expert.id, fullName: expert.fullName, email: expert.email } });
 });
 
 // ---------- AI MESSAGE HELPER FUNCTION (GROQ) ----------

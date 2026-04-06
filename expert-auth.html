@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>KISHAN - Expert Authentication</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      background-color: #1c1c1c;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 25px;
+      border-bottom: 2px solid #2ecc71;
+      background: #2a2a2a;
+      box-sizing: border-box;
+    }
+
+    header img {
+      height: 60px;
+      width: auto;
+    }
+
+    header a {
+      color: #2ecc71;
+      text-decoration: none;
+      font-weight: bold;
+    }
+
+    .auth-container {
+      background: #2a2a2a;
+      width: 100%;
+      max-width: 450px;
+      margin: 50px auto;
+      padding: 30px;
+      border-radius: 14px;
+      box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+      box-sizing: border-box;
+    }
+
+    .auth-tabs {
+      display: flex;
+      justify-content: space-around;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #444;
+      padding-bottom: 10px;
+    }
+
+    .auth-tabs button {
+      background: none;
+      border: none;
+      color: #e0e0e0;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 10px;
+    }
+
+    .auth-tabs button.active {
+      color: #2ecc71;
+      border-bottom: 2px solid #2ecc71;
+    }
+
+    .auth-form {
+      display: none;
+      flex-direction: column;
+    }
+
+    .auth-form.active {
+      display: flex;
+    }
+
+    .auth-form input {
+      margin-bottom: 15px;
+      padding: 12px;
+      border: 1px solid #555;
+      border-radius: 6px;
+      background: #333;
+      color: #e0e0e0;
+      font-size: 14px;
+    }
+
+    .auth-form input[type="file"] {
+      padding: 8px;
+    }
+
+    .auth-form button {
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      background: #2ecc71;
+      color: black;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .auth-form button:hover {
+      background: #27ae60;
+    }
+
+    .message {
+      margin-top: 15px;
+      text-align: center;
+      font-size: 14px;
+    }
+    .error { color: #e74c3c; }
+    .success { color: #2ecc71; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="assets/farmer-logo.jpg" alt="KISHAN Logo" onerror="this.src=''; this.alt='KISHAN';"/>
+    <a href="client.html">← Back to App</a>
+  </header>
+
+  <div class="auth-container">
+    <div class="auth-tabs">
+      <button id="tabLogin" class="active" onclick="switchTab('login')">Login</button>
+      <button id="tabSignup" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="formLogin" class="auth-form active" onsubmit="handleLogin(event)">
+      <input type="email" id="loginEmail" placeholder="Email Address" required />
+      <input type="password" id="loginPassword" placeholder="Password" required />
+      <button type="submit">Login</button>
+      <div id="loginMessage" class="message"></div>
+    </form>
+
+    <!-- Signup Form -->
+    <form id="formSignup" class="auth-form" onsubmit="handleSignup(event)">
+      <input type="text" id="signupName" placeholder="Full Name" required />
+      <input type="email" id="signupEmail" placeholder="Email Address" required />
+      <input type="password" id="signupPassword" placeholder="Password" required />
+      <label for="signupDoc" style="font-size:12px; color:#aaa; margin-bottom:5px;">Upload Verification Document (ID / Certificate)</label>
+      <input type="file" id="signupDoc" accept=".pdf,image/*" required />
+      <button type="submit">Complete Sign Up</button>
+      <div id="signupMessage" class="message"></div>
+    </form>
+  </div>
+
+  <script>
+    function switchTab(tab) {
+      if (tab === 'login') {
+        document.getElementById('tabLogin').classList.add('active');
+        document.getElementById('tabSignup').classList.remove('active');
+        document.getElementById('formLogin').classList.add('active');
+        document.getElementById('formSignup').classList.remove('active');
+      } else {
+        document.getElementById('tabSignup').classList.add('active');
+        document.getElementById('tabLogin').classList.remove('active');
+        document.getElementById('formSignup').classList.add('active');
+        document.getElementById('formLogin').classList.remove('active');
+      }
+    }
+
+    async function handleLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value;
+      const password = document.getElementById('loginPassword').value;
+      const msgDiv = document.getElementById('loginMessage');
+      msgDiv.className = 'message';
+      msgDiv.textContent = 'Logging in...';
+
+      try {
+        const res = await fetch('http://localhost:5000/api/expert/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Login failed');
+        }
+
+        msgDiv.className = 'message success';
+        msgDiv.textContent = 'Login successful! Redirecting...';
+        
+        localStorage.setItem('expertData', JSON.stringify(data.expert));
+        setTimeout(() => {
+          window.location.href = 'client.html';
+        }, 1000);
+
+      } catch (err) {
+        msgDiv.className = 'message error';
+        msgDiv.textContent = err.message;
+      }
+    }
+
+    async function handleSignup(e) {
+      e.preventDefault();
+      const fullName = document.getElementById('signupName').value;
+      const email = document.getElementById('signupEmail').value;
+      const password = document.getElementById('signupPassword').value;
+      const docFile = document.getElementById('signupDoc').files[0];
+      const msgDiv = document.getElementById('signupMessage');
+      
+      msgDiv.className = 'message';
+      msgDiv.textContent = 'Uploading details...';
+
+      const formData = new FormData();
+      formData.append('fullName', fullName);
+      formData.append('email', email);
+      formData.append('password', password);
+      formData.append('document', docFile);
+
+      try {
+        const res = await fetch('http://localhost:5000/api/expert/signup', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.error || 'Signup failed');
+        }
+
+        msgDiv.className = 'message success';
+        msgDiv.textContent = 'Signup successful! You can now log in.';
+        document.getElementById('formSignup').reset();
+        
+        setTimeout(() => {
+          switchTab('login');
+        }, 1500);
+
+      } catch (err) {
+        msgDiv.className = 'message error';
+        msgDiv.textContent = err.message;
+      }
+    }
+  </script>
+
+</body>
+</html>
